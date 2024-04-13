@@ -3,41 +3,48 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FlowInfo {
-    pub width: u32,
-    pub height: u32,
-    pub x_scale: f32,
-    pub x_offset: f32,
-    pub y_scale: f32,
-    pub y_offset: f32,
+pub struct DataAttributes {
+    pub scale: f32,
+    pub offset: f32,
 }
 
-pub struct FlowContainer {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DataInfo {
+    pub width: u32,
+    pub height: u32,
+    pub data_attr: Vec<DataAttributes>,
+}
+
+pub struct DataContainer {
     pub version: u8,
-    pub flow_info: FlowInfo,
+    pub data_info: DataInfo,
     pub data: Vec<u8>,
 }
 
-impl FlowContainer {
-    pub fn new(info: FlowInfo, data: Vec<u8>) -> Self {
-        FlowContainer {
+impl DataContainer {
+    pub fn new(info: DataInfo, data: Vec<u8>) -> Self {
+        DataContainer {
             version: 0,
-            flow_info: info,
+            data_info: info,
             data: data,
         }
     }
 
     pub fn write(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(self.data.len() + 34);
+        let hdr_size = 17 + &self.data_info.data_attr.len() * 8;
 
-        let _ = buf.write_all("flow".as_bytes());
+        let mut buf = Vec::with_capacity(self.data.len() + hdr_size);
+
+        let _ = buf.write_all("data".as_bytes());
         let _ = buf.write_all(&self.version.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.width.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.height.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.x_scale.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.x_offset.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.y_scale.to_le_bytes());
-        let _ = buf.write_all(&self.flow_info.y_offset.to_le_bytes());
+        let _ = buf.write_all(&self.data_info.width.to_le_bytes());
+        let _ = buf.write_all(&self.data_info.height.to_le_bytes());
+        let _ = buf.write_all(&(self.data_info.data_attr.len() as u32).to_le_bytes());
+
+        for a in &self.data_info.data_attr {
+            let _ = buf.write_all(&a.scale.to_le_bytes());
+            let _ = buf.write_all(&a.offset.to_le_bytes());
+        }
         let _ = buf.write_all(&self.data);
 
         buf
@@ -58,29 +65,32 @@ impl FlowContainer {
         let width = u32::from_le_bytes(buffer);
         let _ = reader.read_exact(&mut buffer);
         let height = u32::from_le_bytes(buffer);
-        let _ = reader.read_exact(&mut buffer);
-        let x_scale = f32::from_le_bytes(buffer);
-        let _ = reader.read_exact(&mut buffer);
-        let x_offset = f32::from_le_bytes(buffer);
-        let _ = reader.read_exact(&mut buffer);
-        let y_scale = f32::from_le_bytes(buffer);
-        let _ = reader.read_exact(&mut buffer);
-        let y_offset = f32::from_le_bytes(buffer);
 
-        //let mut buffer: Vec<u8> = Vec::with_capacity(width as usize * 2 * height as usize);
-        let mut buffer: Vec<u8> = Vec::with_capacity(input.len() - 29);
+        let _ = reader.read_exact(&mut buffer);
+        let count = u32::from_le_bytes(buffer);
+
+        let mut attrs = vec![];
+        for _ in 0..count {
+            let scale = f32::from_le_bytes(buffer);
+            let _ = reader.read_exact(&mut buffer);
+            let offset = f32::from_le_bytes(buffer);
+            let _ = reader.read_exact(&mut buffer);
+
+            let data_info = DataAttributes { scale, offset };
+            attrs.push(data_info);
+        }
+
+        let hdr_size = 17 + count * 8;
+        let mut buffer: Vec<u8> = Vec::with_capacity(input.len() - hdr_size as usize);
 
         let _ = reader.read_to_end(&mut buffer);
 
-        FlowContainer {
+        DataContainer {
             version: version,
-            flow_info: FlowInfo {
+            data_info: DataInfo {
                 width: width,
                 height: height,
-                x_scale,
-                x_offset,
-                y_scale,
-                y_offset,
+                data_attr: attrs,
             },
             data: buffer,
         }
