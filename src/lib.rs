@@ -71,10 +71,10 @@ impl DataContainer {
 
         let mut attrs = vec![];
         for _ in 0..count {
+            let _ = reader.read_exact(&mut buffer);
             let scale = f32::from_le_bytes(buffer);
             let _ = reader.read_exact(&mut buffer);
             let offset = f32::from_le_bytes(buffer);
-            let _ = reader.read_exact(&mut buffer);
 
             let data_info = DataAttributes { scale, offset };
             attrs.push(data_info);
@@ -94,5 +94,38 @@ impl DataContainer {
             },
             data: buffer,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn data_container_test() {
+        let info = DataInfo {
+            width: 1024,
+            height: 1024,
+            data_attr: vec![DataAttributes {
+                scale: 42.5,
+                offset: 7.0,
+            }],
+        };
+
+        let dc = DataContainer::new(info.clone(), vec![]);
+        let output = dc.write();
+
+        let new_dc = DataContainer::read(&output);
+
+        assert_eq!(info.width, new_dc.data_info.width);
+        assert_eq!(info.height, new_dc.data_info.height);
+        assert_eq!(
+            &info.data_attr[0].scale,
+            &new_dc.data_info.data_attr[0].scale
+        );
+        assert_eq!(
+            info.data_attr[0].offset,
+            new_dc.data_info.data_attr[0].offset
+        );
     }
 }
