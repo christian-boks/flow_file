@@ -56,9 +56,13 @@ impl DataContainer {
         let mut header = [0; 4];
         let _ = reader.read_exact(&mut header);
 
-        let mut buffer = [0; 4];
+        let mut buffer = [0; 1];
         let _ = reader.read_exact(&mut buffer);
-        let version = u32::from_le_bytes(buffer);
+        let version = u8::from_le_bytes(buffer);
+        if version == 1 {
+            let mut buffer = [0; 3];
+            let _ = reader.read_exact(&mut buffer);
+        }
 
         let mut buffer = [0; 4];
         let _ = reader.read_exact(&mut buffer);
@@ -86,7 +90,7 @@ impl DataContainer {
         let _ = reader.read_to_end(&mut buffer);
 
         DataContainer {
-            version: version,
+            version: version as u32,
             data_info: DataInfo {
                 width: width,
                 height: height,
