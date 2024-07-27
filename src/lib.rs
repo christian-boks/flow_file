@@ -16,7 +16,7 @@ pub struct DataInfo {
 }
 
 pub struct DataContainer {
-    pub version: u8,
+    pub version: u32,
     pub data_info: DataInfo,
     pub data: Vec<u8>,
 }
@@ -24,14 +24,14 @@ pub struct DataContainer {
 impl DataContainer {
     pub fn new(info: DataInfo, data: Vec<u8>) -> Self {
         DataContainer {
-            version: 0,
+            version: 1,
             data_info: info,
             data: data,
         }
     }
 
     pub fn write(&self) -> Vec<u8> {
-        let hdr_size = 17 + &self.data_info.data_attr.len() * 8;
+        let hdr_size = 20 + &self.data_info.data_attr.len() * 8;
 
         let mut buf = Vec::with_capacity(self.data.len() + hdr_size);
 
@@ -56,9 +56,9 @@ impl DataContainer {
         let mut header = [0; 4];
         let _ = reader.read_exact(&mut header);
 
-        let mut buffer = [0; 1];
+        let mut buffer = [0; 4];
         let _ = reader.read_exact(&mut buffer);
-        let version = u8::from_le_bytes(buffer);
+        let version = u32::from_le_bytes(buffer);
 
         let mut buffer = [0; 4];
         let _ = reader.read_exact(&mut buffer);
@@ -80,7 +80,7 @@ impl DataContainer {
             attrs.push(data_info);
         }
 
-        let hdr_size = 17 + count * 8;
+        let hdr_size = 20 + count * 8;
         let mut buffer: Vec<u8> = Vec::with_capacity(input.len() - hdr_size as usize);
 
         let _ = reader.read_to_end(&mut buffer);
