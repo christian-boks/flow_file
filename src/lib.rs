@@ -31,11 +31,15 @@ impl DataContainer {
     }
 
     pub fn write(&self) -> Vec<u8> {
+        self.write_with_header("data")
+    }
+
+    pub fn write_with_header(&self, header: &str) -> Vec<u8> {
         let hdr_size = 20 + &self.data_info.data_attr.len() * 8;
 
         let mut buf = Vec::with_capacity(self.data.len() + hdr_size);
 
-        let _ = buf.write_all("data".as_bytes());
+        let _ = buf.write_all(header.as_bytes());
         let _ = buf.write_all(&self.version.to_le_bytes());
         let _ = buf.write_all(&self.data_info.width.to_le_bytes());
         let _ = buf.write_all(&self.data_info.height.to_le_bytes());
