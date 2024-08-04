@@ -17,6 +17,7 @@ pub struct DataInfo {
 
 pub struct DataContainer {
     pub version: u32,
+    pub header: String,
     pub data_info: DataInfo,
     pub data: Vec<u8>,
 }
@@ -25,6 +26,7 @@ impl DataContainer {
     pub fn new(info: DataInfo, data: Vec<u8>) -> Self {
         DataContainer {
             version: 1,
+            header: "data".to_string(),
             data_info: info,
             data: data,
         }
@@ -59,6 +61,8 @@ impl DataContainer {
 
         let mut header = [0; 4];
         let _ = reader.read_exact(&mut header);
+
+        let header_str = String::from_utf8(header.to_vec()).unwrap_or_default();
 
         let mut buffer = [0; 1];
         let _ = reader.read_exact(&mut buffer);
@@ -95,6 +99,7 @@ impl DataContainer {
 
         DataContainer {
             version: version as u32,
+            header: header_str,
             data_info: DataInfo {
                 width: width,
                 height: height,
@@ -125,6 +130,7 @@ mod tests {
 
         let new_dc = DataContainer::read(&output);
 
+        assert_eq!("data", new_dc.header);
         assert_eq!(info.width, new_dc.data_info.width);
         assert_eq!(info.height, new_dc.data_info.height);
         assert_eq!(
